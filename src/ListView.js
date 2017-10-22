@@ -1,44 +1,78 @@
 import React, { Component } from 'react';
-import {TouchableHighlight, View, Text} from 'react-native';
-import CheckBox from './CheckBox';
+import { Text, View, TouchableHighlight} from 'react-native';
+import TodoModel from './TodoModel';
+import OmniBox from './OmniBox';
+import SortableListView from 'react-native-sortable-listview';
+import ListViewItem from './ListViewItem';
+import Utils from './Utils';
 
-class ListViewItem extends Component {
-    constructor(props) {
-        super(props);
-        this._onCheckBoxPressed = this._onCheckBoxPressed.bind(this);
-        this.state = {
-            data: this.props.data
-        }
-    }
+let dataList = [
+  new TodoModel('Hello Koding'),
+  new TodoModel('Make a Todo App with React Native'),
+  new TodoModel('Check to complete a todo'),
+  new TodoModel('Long press, drag and drop a todo to sort'),
+  new TodoModel('Save data with Realm'),
+  new TodoModel('Sync data with Firebase')
+];
 
-    componentWillReceiveProps(props) {
-        this.setState({
-          data: props.data  
-        })
-    }
+var dataListOrder = getOrder(dataList);
 
-    _onCheckBoxPressed() {
-        var data = this.state.data;
-        data.completed = !data.completed;
-        this.setState({
-            data: data
-        });
-        this.props.onCompletedChange(data, this.props.dataIndex);
-    }
-
-    render() {
-        let data = this.state.data;
-        let color = data.completed ? '#C5C8C9' : '#000';
-        let textDecorationLine = data.completed ? 'line-through' : 'none';
-        return (
-            <TouchableHighlight underlayColor = {'#eee'} style={{paddingTop: 6, paddingBottom: 6, backgroundColor: "#F8F8F8", borderBottomWidth:1, borderColor: '#eee'}} {...this.props.sortHandlers}>
-                <View style = {{flexDirection: 'row',alignItems: 'center'}}>
-                    <CheckBox data = {data} color = { color} onCheckBoxPressed = { this._onCheckBoxPressed }></CheckBox>
-                    <Text style = {{fontSize:18, color: color, textDecorationLine: textDecorationLine}}>{data.title}</Text>
-                </View>
-            </TouchableHighlight>
-        )
-    }
+function getOrder(list) {
+  return Object.keys(list);
 }
 
-module.exports = ListViewItem;
+function moveOrderItem(listView, fromIndex, toIndex) {
+  Utils.move(dataListOrder, parseInt(fromIndex), parseInt(toIndex));
+  if (listView.forceUpdate) listView.forceUpdate();
+}
+
+class ListView extends Component {
+  constructor(props) {
+    super(props);
+    this.updateDataList = this.updateDataList.bind(this);
+    this._onCompletedChange = this._onCompletedChange.bind(this);
+    this.state = {
+      dataList: dataList
+    }
+  }
+
+  updateDataList(dataList) {
+    dataListOrder = getOrder(dataList);
+    this.setState({
+      dataList: dataList
+    });
+  }
+
+  _onCompletedChange(dataItem, index) {
+    let fromIndex = dataListOrder.indexOf(index);
+    let toIndex = dataItem.completed ? dataListOrder.length - 1 : 0;
+    moveOrderItem(this, fromIndex, toIndex);
+  }
+
+  render() {
+    let listView = (<View></View>);
+    if (this.state.dataList.length) {
+      listView = (
+        <SortableListView
+          ref='listView'
+          style={{flex: 1}}
+          data={this.state.dataList}
+          order={dataListOrder}
+          onRowMoved={e => moveOrderItem(this, e.from, e.to)}
+          renderRow={(dataItem, section, index) => <ListViewItem data={dataItem} dataIndex={index} onCompletedChange={this._onCompletedChange}/>}
+        />
+      );
+    }
+
+    return (
+        <View style={{flex: 1, marginLeft: 10, marginRight: 10}}>
+          <OmniBox
+            data={dataList}
+            updateDataList={this.updateDataList}/>
+          {listView}
+        </View>
+    )
+  }
+};
+
+module.exports = ListView;
